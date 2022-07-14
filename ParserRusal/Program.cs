@@ -10,12 +10,13 @@ namespace ParserRusal
 {
     class Program
     {
-
-
+        public string ItemsPageUrl { get; set; } = "https://tender.rusal.ru/Tenders/Load";
         static async Task Main(string[] args)
         {
             using (var httpClient = new HttpClient())
             {
+                int totalCount = await GetTotalCountAsync();
+                Console.WriteLine(totalCount);
                 var values = new Dictionary<string, string>
                 {
                     { "limit", "10" },
@@ -24,25 +25,21 @@ namespace ParserRusal
                     { "sortColumn", "EntityNumber" },
                     { "ClassifiersFieldData.SiteSectionType", "bef4c544-ba45-49b9-8e91-85d9483ff2f6" },
                 };
-
                 var content = new FormUrlEncodedContent(values);
-
                 var response = await httpClient.PostAsync("https://tender.rusal.ru/Tenders/Load", content);
-
                 var responseString = await response.Content.ReadAsStringAsync();
                 var items = JObject.Parse(responseString)["Rows"].ToObject<Item[]>();
 
                 foreach (var item in items)
                 {
                     var html = await GetAsync(item.TenderViewUrl);
-                    item.StartApplicationDate = ParseStartApplicationDate(html);
+                    item.StartApplicationDate = GetStartApplicationDate(html);
 
                     Console.WriteLine(item);
                 }
-
-
-                Console.ReadLine();
             }
+
+            Console.ReadLine();
         }
 
         public static async Task<string> GetAsync(string uri)
@@ -60,7 +57,31 @@ namespace ParserRusal
             }
         }
 
-        public static string ParseStartApplicationDate(string html)
+        public static async Task<int> GetTotalCountAsync()
+        {
+            using (var httpClient = new HttpClient())
+            {
+                var values = new Dictionary<string, string>
+                {
+                    { "limit", "0" },
+                    { "offset", "0" },
+                    { "sortAsc", "false" },
+                    { "sortColumn", "EntityNumber" },
+                    { "ClassifiersFieldData.SiteSectionType", "bef4c544-ba45-49b9-8e91-85d9483ff2f6" },
+                };
+
+                var content = new FormUrlEncodedContent(values);
+
+                var response = await httpClient.PostAsync("https://tender.rusal.ru/Tenders/Load", content);
+
+                var responseString = await response.Content.ReadAsStringAsync();
+
+                var TotalCount = JObject.Parse(responseString)["Paging"]["Total"].ToString();
+                return int.Parse(TotalCount);
+            }
+        }
+
+        public static string GetStartApplicationDate(string html)
         {
             string startDatePattern = @"<div class=""control-readonly"" data-field-name=""Fields.RequestReceivingBeginDate"">(?<val>.*?)<\/div>";
             RegexOptions options = RegexOptions.Compiled | RegexOptions.Singleline;
@@ -75,7 +96,6 @@ namespace ParserRusal
             }
             return Result.Trim();
         }
-
     }
 
     public class Item
