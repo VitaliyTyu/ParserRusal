@@ -11,6 +11,7 @@ namespace ParserRusal.Data.Entities
     {
         public Guid Id { get; set; }
 
+        // Номер лота
         private string _entityNumber;
         public string EntityNumber
         {
@@ -18,8 +19,10 @@ namespace ParserRusal.Data.Entities
             set { _entityNumber = value.Substring(0, value.Length - 2); }
         }
 
+        // Организатор
         public string OrganizerName { get; set; }
 
+        // Страница процедуры
         private string _tenderViewUrl;
         public string TenderViewUrl
         {
@@ -27,9 +30,13 @@ namespace ParserRusal.Data.Entities
             set { _tenderViewUrl = "https://tender.rusal.ru" + value; }
         }
 
+        // Дата начала подачи заявок
+        public string StartApplicationDate { get; set; }
+
+        // Документы
         public List<DocumentInfo> DocumentInfos { get; set; } = new List<DocumentInfo>();
 
-        public string StartApplicationDate { get; set; }
+
 
         public override string ToString()
         {

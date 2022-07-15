@@ -19,6 +19,7 @@ namespace ParserRusal
         public async Task StartParsing()
         {
             Console.WriteLine("\nОжидайте\n");
+
             using (DataContext db = new DataContext())
             {
                 await db.Database.EnsureDeletedAsync();
@@ -43,9 +44,12 @@ namespace ParserRusal
 
                     foreach (var item in items)
                     {
+                        // Получение html кода со страницы процедуры
                         var html = await PostAsync(item.TenderViewUrl, new Dictionary<string, string>());
                         item.StartApplicationDate = GetStartApplicationDate(html);
                         item.DocumentInfos = await GetDocuments(html);
+
+                        // добавление итема и связанных с ним документов в БД
                         await db.Items.AddAsync(item);
 
                         //Console.WriteLine(item);
@@ -57,10 +61,14 @@ namespace ParserRusal
             }
         }
 
+        /// <summary>
+        /// Настройка метода POST
+        /// </summary>
         public async Task<string> PostAsync(string uri, Dictionary<string, string> values)
         {
             using (var httpClient = new HttpClient())
             {
+                // добавление заголовков
                 httpClient.DefaultRequestHeaders.Add("x-csrf-token", "Fetch");
                 httpClient.DefaultRequestHeaders.Add("x-requested-with", "XMLHttpRequest");
                 httpClient.DefaultRequestHeaders.Add("X-Content-Requested-For", "Tab");
@@ -72,6 +80,7 @@ namespace ParserRusal
                     httpClient.DefaultRequestHeaders.Add("user-agent", UserAgentValue);
                 }
 
+                // отправка запроса и обработка ответа
                 var content = new FormUrlEncodedContent(values);
                 var response = await httpClient.PostAsync(uri, content);
                 var responseString = await response.Content.ReadAsStringAsync();
@@ -79,6 +88,9 @@ namespace ParserRusal
             }
         }
 
+        /// <summary>
+        /// Получение общего еол-ва элементов
+        /// </summary>
         public async Task<int> GetTotalCountAsync()
         {
             var values = new Dictionary<string, string>
@@ -96,8 +108,12 @@ namespace ParserRusal
             return int.Parse(TotalCount);
         }
 
+        /// <summary>
+        /// Получение даты начала подачи заявок
+        /// </summary>
         public string GetStartApplicationDate(string html)
         {
+            // Парсинг Html при помощи регулярок
             string startDatePattern = @"<div class=""control-readonly"" data-field-name=""Fields.RequestReceivingBeginDate"">(?<val>.*?)<\/div>";
             RegexOptions options = RegexOptions.Compiled | RegexOptions.Singleline;
             Regex startDateRegex = new Regex(startDatePattern, options);
@@ -112,13 +128,18 @@ namespace ParserRusal
             return Result.Trim();
         }
 
+        /// <summary>
+        /// Получение информации о доккументах
+        /// </summary>
         public async Task<List<DocumentInfo>> GetDocuments(string html)
         {
+            // Парсинг Html при помощи библиотеки AngleSharp
             IConfiguration config = Configuration.Default;
             IBrowsingContext context = BrowsingContext.New(config);
             IDocument document = await context.OpenAsync(req => req.Content(html));
             var cells = document.GetElementsByClassName("file-download-link ");
             var titles = cells.Select(m => m.TextContent);
+
             var documentInfos = new List<DocumentInfo>();
             foreach (var item in cells)
             {
