@@ -18,10 +18,7 @@ namespace ParserRusal.Data
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseMySql(
-                "server=localhost;user=root;password=root1234;database=parserrusal;", 
-                new MySqlServerVersion(new Version(8, 0, 11))
-                );
+            optionsBuilder.UseSqlite("Filename=RusalParser.db");
         }
     }
 }
