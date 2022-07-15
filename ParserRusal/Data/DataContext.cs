@@ -1,0 +1,24 @@
+﻿using Microsoft.EntityFrameworkCore;
+using ParserRusal.Data.Entities;
+
+namespace ParserRusal.Data
+{
+    public class DataContext : DbContext
+    {
+        public DbSet<Item> Items { get; set; }
+        public DbSet<DocumentInfo> DocumentInfos { get; set; }
+
+        public DataContext()
+        {
+            Database.EnsureCreated();
+        }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.UseMySql(
+                "server=localhost;user=root;password=root1234;database=parserrusal;", 
+                new MySqlServerVersion(new Version(8, 0, 11))
+                );
+        }
+    }
+}
