@@ -24,7 +24,20 @@ namespace ParserRusal
                 {
                     case "1":
                         var parser = new Parser();
-                        await parser.StartParsing();
+                        try
+                        {
+                            await parser.StartParsing();
+                            Printer.WriteGreen("\nУспешно.");
+                        }
+                        catch (Exception)
+                        {
+                            parser.IsNeedExtraHeaders = true;
+                            Console.WriteLine("Произошла ошибка при парсинге, скорее всего это из-за того, что сайту потребовались куки и заголовок user-agent. Эту проблему решить автоматически я не смог, поэтому необходимо взять эти значения из заголовка любого запроса.");
+                            Console.WriteLine("Введите значение куки, а именно то, что идет после cookie: ");
+                            parser.CookieValue = Console.ReadLine().Trim();
+                            Console.WriteLine("Введите значение user-agent, а именно то, что идет после user-agent: ");
+                            parser.UserAgentValue = Console.ReadLine().Trim();
+                        }
                         break;
 
                     case "2":
@@ -41,7 +54,5 @@ namespace ParserRusal
                 }
             }
         }
-
-
     }
 }

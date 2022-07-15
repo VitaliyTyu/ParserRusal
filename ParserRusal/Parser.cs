@@ -6,15 +6,19 @@ using ParserRusal.Data.Entities;
 using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 
 namespace ParserRusal
 {
     public class Parser
     {
+        public bool IsNeedExtraHeaders { get; set; } = false;
+        public string CookieValue { get; set; } = "";
+        public string UserAgentValue { get; set; } = "";
+
         public async Task StartParsing()
         {
             Console.WriteLine("\nОжидайте\n");
-            using (var httpClient = new HttpClient())
             using (DataContext db = new DataContext())
             {
                 await db.Database.EnsureDeletedAsync();
@@ -34,17 +38,17 @@ namespace ParserRusal
                         { "ClassifiersFieldData.SiteSectionType", "bef4c544-ba45-49b9-8e91-85d9483ff2f6" },
                     };
 
-                    var content = new FormUrlEncodedContent(values);
-                    var response = await httpClient.PostAsync("https://tender.rusal.ru/Tenders/Load", content);
-                    var responseString = await response.Content.ReadAsStringAsync();
+                    var responseString = await PostAsync("https://tender.rusal.ru/Tenders/Load", values);
                     var items = JObject.Parse(responseString)["Rows"].ToObject<Item[]>();
 
                     foreach (var item in items)
                     {
-                        var html = await PostAsync(item.TenderViewUrl);
+                        var html = await PostAsync(item.TenderViewUrl, new Dictionary<string, string>());
                         item.StartApplicationDate = GetStartApplicationDate(html);
                         item.DocumentInfos = await GetDocuments(html);
                         await db.Items.AddAsync(item);
+
+                        //Console.WriteLine(item);
                     }
 
                     await db.SaveChangesAsync();
@@ -53,27 +57,31 @@ namespace ParserRusal
             }
         }
 
-        public async Task<string> PostAsync(string uri)
+        public async Task<string> PostAsync(string uri, Dictionary<string, string> values)
         {
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(uri);
-            request.Headers.Add("x-csrf-token", "Fetch");
-            request.Headers.Add("x-requested-with", "XMLHttpRequest");
-            request.Headers.Add("X-Content-Requested-For", "Tab");
-            request.Method = "POST";
-
-            using (HttpWebResponse response = (HttpWebResponse)await request.GetResponseAsync())
-            using (Stream stream = response.GetResponseStream())
-            using (StreamReader reader = new StreamReader(stream))
+            using (var httpClient = new HttpClient())
             {
-                return await reader.ReadToEndAsync();
+                httpClient.DefaultRequestHeaders.Add("x-csrf-token", "Fetch");
+                httpClient.DefaultRequestHeaders.Add("x-requested-with", "XMLHttpRequest");
+                httpClient.DefaultRequestHeaders.Add("X-Content-Requested-For", "Tab");
+
+                if (IsNeedExtraHeaders)
+                {
+                    // опциональные, иногда без них не работает
+                    httpClient.DefaultRequestHeaders.Add("cookie", CookieValue);
+                    httpClient.DefaultRequestHeaders.Add("user-agent", UserAgentValue);
+                }
+
+                var content = new FormUrlEncodedContent(values);
+                var response = await httpClient.PostAsync(uri, content);
+                var responseString = await response.Content.ReadAsStringAsync();
+                return responseString;
             }
         }
 
         public async Task<int> GetTotalCountAsync()
         {
-            using (var httpClient = new HttpClient())
-            {
-                var values = new Dictionary<string, string>
+            var values = new Dictionary<string, string>
                 {
                     { "limit", "10" },
                     { "offset", "0" },
@@ -82,15 +90,10 @@ namespace ParserRusal
                     { "ClassifiersFieldData.SiteSectionType", "bef4c544-ba45-49b9-8e91-85d9483ff2f6" },
                 };
 
-                var content = new FormUrlEncodedContent(values);
+            var responseString = await PostAsync("https://tender.rusal.ru/Tenders/Load", values);
+            var TotalCount = JObject.Parse(responseString)["Paging"]["Total"].ToString();
 
-                var response = await httpClient.PostAsync("https://tender.rusal.ru/Tenders/Load", content);
-
-                var responseString = await response.Content.ReadAsStringAsync();
-
-                var TotalCount = JObject.Parse(responseString)["Paging"]["Total"].ToString();
-                return int.Parse(TotalCount);
-            }
+            return int.Parse(TotalCount);
         }
 
         public string GetStartApplicationDate(string html)
