@@ -54,6 +54,7 @@ namespace ParserRusal
 
                         // добавление итема и связанных с ним документов в БД
                         await db.Items.AddAsync(item);
+                        await db.SaveChangesAsync();
 
                         if (IsOutput)
                         {
@@ -63,7 +64,7 @@ namespace ParserRusal
                         }
                     }
 
-                    await db.SaveChangesAsync();
+                    //await db.SaveChangesAsync();
                     Printer.WriteGreen($"\nКоличество полученных элементов: {db.Items.Count()}");
                 }
             }
