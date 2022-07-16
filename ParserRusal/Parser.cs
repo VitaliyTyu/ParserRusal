@@ -12,6 +12,7 @@ namespace ParserRusal
 {
     public class Parser
     {
+        public bool IsOutput { get; set; } = false;
         public bool IsNeedExtraHeaders { get; set; } = false;
         public string CookieValue { get; set; } = "";
         public string UserAgentValue { get; set; } = "";
@@ -26,7 +27,9 @@ namespace ParserRusal
                 await db.Database.EnsureCreatedAsync();
 
                 int totalCount = await GetTotalCountAsync();
+                Console.WriteLine($"Общее количество элементов: {totalCount}\n");
 
+                int num = 1;
                 for (int i = 0; i < totalCount / 25 + 1; i++)
                 {
 
@@ -52,11 +55,16 @@ namespace ParserRusal
                         // добавление итема и связанных с ним документов в БД
                         await db.Items.AddAsync(item);
 
-                        //Console.WriteLine(item);
+                        if (IsOutput)
+                        {
+                            Printer.WriteGreen($"\nЭлемент {num}");
+                            Console.WriteLine(item);
+                            num++;
+                        }
                     }
 
                     await db.SaveChangesAsync();
-                    Printer.WriteGreen($"Количество элементов: {db.Items.Count()}");
+                    Printer.WriteGreen($"\nКоличество полученных элементов: {db.Items.Count()}");
                 }
             }
         }
@@ -149,6 +157,17 @@ namespace ParserRusal
                 documentInfos.Add(documentInfo);
             }
             return documentInfos;
+        }
+
+
+        public void AddExtraHeaders()
+        {
+            IsNeedExtraHeaders = true;
+            Console.WriteLine("Произошла ошибка при парсинге, скорее всего это из-за того, что сайту потребовались куки и заголовок user-agent. Эту проблему решить автоматически я не смог, поэтому необходимо взять эти значения из заголовка любого запроса.");
+            Console.WriteLine("Введите значение куки, а именно то, что идет после cookie: ");
+            CookieValue = Console.ReadLine().Trim();
+            Console.WriteLine("Введите значение user-agent, а именно то, что идет после user-agent: ");
+            UserAgentValue = Console.ReadLine().Trim();
         }
     }
 }
